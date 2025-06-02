@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -20,8 +22,13 @@ namespace UnityHierarchyExpansionMemory
         static System.Type _sceneHierarchyWindowType;
         static PropertyInfo _lastInteractedHierarchyWindow;
 
+        static readonly string _projectKeyPrefix;
+
         static SceneHierarchyExpansionMemory()
         {
+            // Compute project-unique prefix
+            _projectKeyPrefix = PrefsKeyPrefix + HashProjectPath() + "_";
+
             // Cache reflection data
             _sceneHierarchyWindowType = typeof(EditorWindow).Assembly.GetType(
                 "UnityEditor.SceneHierarchyWindow"
@@ -43,7 +50,9 @@ namespace UnityHierarchyExpansionMemory
             EditorSceneManager.sceneClosing += OnSceneClosing;
             EditorSceneManager.sceneOpened += OnSceneOpened;
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
-            RestoreExpandedState(); // Try after domain reload
+
+            // Restore expanded state after domain reloads
+            RestoreExpandedState();
         }
         #endregion
 
@@ -92,7 +101,7 @@ namespace UnityHierarchyExpansionMemory
             if (string.IsNullOrEmpty(sceneGuid))
                 return;
 
-            string key = PrefsKeyPrefix + sceneGuid;
+            string key = _projectKeyPrefix + sceneGuid;
             EditorPrefs.SetString(key, string.Join("|", expandedGuids));
         }
 
@@ -106,7 +115,7 @@ namespace UnityHierarchyExpansionMemory
             if (string.IsNullOrEmpty(sceneGuid))
                 return;
 
-            string key = PrefsKeyPrefix + sceneGuid;
+            string key = _projectKeyPrefix + sceneGuid;
             if (!EditorPrefs.HasKey(key))
                 return;
 
@@ -119,7 +128,7 @@ namespace UnityHierarchyExpansionMemory
                 if (GlobalObjectId.TryParse(guidStr, out GlobalObjectId gid))
                 {
                     Object obj = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(gid);
-                    if (obj is GameObject go)
+                    if (obj is GameObject go && go.scene == scene)
                         expandedInstanceIds.Add(go.GetInstanceID());
                 }
             }
@@ -139,6 +148,14 @@ namespace UnityHierarchyExpansionMemory
             if (!scene.IsValid())
                 return null;
             return AssetDatabase.AssetPathToGUID(scene.path);
+        }
+
+        static string HashProjectPath()
+        {
+            using var sha256 = SHA256.Create();
+            byte[] bytes = Encoding.UTF8.GetBytes(Application.dataPath);
+            byte[] hash = sha256.ComputeHash(bytes);
+            return System.BitConverter.ToString(hash).Replace("-", "").Substring(0, 8); // 8-char prefix
         }
 
         // Reflection Helpers
