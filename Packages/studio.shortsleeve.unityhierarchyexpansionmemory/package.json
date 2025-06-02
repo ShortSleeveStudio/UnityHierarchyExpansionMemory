@@ -1,0 +1,16 @@
+{
+  "name": "studio.shortsleeve.unityhierarchyexpansionmemory",
+  "displayName": "Unity Hierarchy Expansion Memory",
+  "author": {
+    "name": "Short Sleeve Studio",
+    "url": "https://github.com/ShortSleeveStudio/UnityHierarchyExpansionMemory"
+  },
+  "version": "0.0.0",
+  "unity": "2021.2",
+  "description": "A simple tool to preserve the scene hierarchy expansion state between scene loads.",
+  "hideInEditor": false,
+  "keywords": [
+    "hierarchy",
+    "unity"
+  ]
+}
